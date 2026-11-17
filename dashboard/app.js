@@ -122,12 +122,12 @@
     return el('section', { class: 'lede' },
       el('div', null,
         el('h1', null, 'Every protocol that records no token, ranked by ', el('span', { class: 'hl', text: 'what its token would be worth' }), '.'),
-        el('p', { text: 'The watchlist is the floor, not the ceiling: all ' + s.watchlist + ' watchlist protocols are ranked, and the radar adds ' + s.early + ' early pre-token protocols below the $' + Math.round(DATA.floor_usd / 1e6) + 'M floor. Each implied value is the protocol\'s TVL priced at the median market-cap multiple of its own category\'s live tokens, adjusted for its week of growth, its record with no token, and its chain reach. It is the model\'s claim, not a price and not a promise of a launch.' })
+        el('p', { text: 'The watchlist is the floor, not the ceiling: all ' + s.watchlist + ' watchlist protocols are ranked, and the radar adds ' + s.early + ' early pre-token protocols the list leaves out, most of them below the $' + Math.round(DATA.floor_usd / 1e6) + 'M floor. Each implied value is the protocol\'s TVL priced at the median market-cap multiple of its own category\'s live tokens, adjusted for its week of growth, its record with no token, and its chain reach. It is the model\'s claim, not a price and not a promise of a launch.' })
       ),
       el('div', { class: 'facts' },
         el('div', { class: 'fact' }, el('span', { text: 'Watchlist covered' }), el('b', { text: s.watchlist + ' / ' + s.watchlist })),
         el('div', { class: 'fact' }, el('span', { text: 'Protocols ranked' }), el('b', { text: String(s.board) })),
-        el('div', { class: 'fact' }, el('span', { text: 'Early, below the floor' }), el('b', { text: String(s.early) })),
+        el('div', { class: 'fact' }, el('span', { text: 'Early rows added' }), el('b', { text: String(s.early) })),
         el('div', { class: 'fact' }, el('span', { text: 'Already trading, set aside' }), el('b', { text: String(s.live) }))
       )
     );
@@ -302,7 +302,7 @@
           multBody)),
       el('h2', { text: 'Who is on the board, and who is not' }),
       el('ul', null,
-        el('li', null, el('b', { text: 'Ranked: ' }), 'every protocol whose record shows no token (no market cap, no CoinGecko id, no symbol) and which is not a product of an asset that already trades, plus every watchlist protocol whatever its shape. The watchlist\'s ' + DATA.stats.watchlist + ' are the floor; ' + DATA.stats.early + ' early rows below it are the radar\'s own catch.'),
+        el('li', null, el('b', { text: 'Ranked: ' }), 'every protocol whose record shows no token (no market cap, no CoinGecko id, no symbol) and which is not a product of an asset that already trades, plus every watchlist protocol whatever its shape. The watchlist\'s ' + DATA.stats.watchlist + ' are the floor; ' + DATA.stats.early + ' early rows it leaves out are the radar\'s own catch.'),
         el('li', null, el('b', { text: 'Set aside: ' }), DATA.stats.set_aside + ' pre-token records are products of tokens that already trade: versioned pools of another protocol, wrapped, staked or bridged wrappers, and exchange products. A wrapper\'s launch already happened; it is the underlying\'s.'),
         el('li', null, el('b', { text: 'Already trading: ' }), DATA.stats.live + ' protocols record a token. They are shown at market value on their own view and are never given a modelled rank.'),
         el('li', null, el('b', { text: 'A record is not proof: ' }), 'the board says a protocol records no token, never that it has none. A protocol may carry a token its record does not show.')),
