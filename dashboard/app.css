@@ -135,4 +135,7 @@ td.num, th.num { text-align: right; }
 .method td, .method th { padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line); }
 .foot { margin-top: 30px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 14px; }
 .noscript { padding: 30px; color: var(--muted); }
+td.range { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.signals { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 8px; }
+.sig { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
 @media (max-width: 900px) { .lede { grid-template-columns: 1fr; } }

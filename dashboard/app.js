@@ -1,7 +1,10 @@
 // Launch Radar's dashboard. It reads window.RADAR (data.js, written beside dashboard/ by main.ts from
-// the same board board.json carries) and renders three views: the ranked board with filters, a
-// detail drawer for each protocol with its valuation working and farm plan, the live-token set the
-// board set aside, and a Method view that states the model. No network: every byte is in data.js.
+// the same board board.json carries) and renders three views: the ranked board with filters (each
+// row carrying its scenario band and launch-readiness score), a detail drawer for each protocol
+// with its valuation working, scenario band, sensitivity, readiness signals and farm plan, the
+// live-token set the board set aside, and a Method view that states the model, the peer multiples
+// with their dispersion, the model's leave-one-out backtest against the live tokens, and the
+// per-category landscape. No network: every byte is in data.js.
 (function () {
   'use strict';
 
@@ -92,6 +95,7 @@
       else if (key === 'growth') { av = a.change_7d === null ? -Infinity : a.change_7d; bv = b.change_7d === null ? -Infinity : b.change_7d; }
       else if (key === 'age') { av = a.age_days === null ? Infinity : a.age_days; bv = b.age_days === null ? Infinity : b.age_days; }
       else if (key === 'mult') { av = a.model.peer_multiple; bv = b.model.peer_multiple; }
+      else if (key === 'ready') { av = a.readiness ? a.readiness.score : -1; bv = b.readiness ? b.readiness.score : -1; }
       else if (key === 'implied') { av = a.implied_value_usd; bv = b.implied_value_usd; }
       else { av = a.rank; bv = b.rank; }
       if (av < bv) return -dir;
@@ -122,7 +126,7 @@
     return el('section', { class: 'lede' },
       el('div', null,
         el('h1', null, 'Every protocol that records no token, ranked by ', el('span', { class: 'hl', text: 'what its token would be worth' }), '.'),
-        el('p', { text: 'The watchlist is the floor, not the ceiling: all ' + s.watchlist + ' watchlist protocols are ranked, and the radar adds ' + s.early + ' early pre-token protocols the list leaves out, most of them below the $' + Math.round(DATA.floor_usd / 1e6) + 'M floor. Each implied value is the protocol\'s TVL priced at the median market-cap multiple of its own category\'s live tokens, adjusted for its week of growth, its record with no token, and its chain reach. It is the model\'s claim, not a price and not a promise of a launch.' })
+        el('p', { text: 'The watchlist is the floor, not the ceiling: all ' + s.watchlist + ' watchlist protocols are ranked, and the radar adds ' + s.early + ' early pre-token protocols the list leaves out, most of them below the $' + Math.round(DATA.floor_usd / 1e6) + 'M floor. Each implied value is the protocol\'s TVL priced at the median market-cap multiple of its own category\'s live tokens, adjusted for its week of growth, its record with no token, and its chain reach. Every row also carries the band its peers\' own dispersion supports and a launch-readiness score, and the Method view publishes the model\'s backtest against the tokens that already trade. It is the model\'s claim, not a price and not a promise of a launch.' })
       ),
       el('div', { class: 'facts' },
         el('div', { class: 'fact' }, el('span', { text: 'Watchlist covered' }), el('b', { text: s.watchlist + ' / ' + s.watchlist })),
@@ -210,16 +214,19 @@
           el('div', { class: 'bar', 'aria-hidden': 'true' }, el('i', { style: 'width:' + Math.max(3, Math.round((r.implied_value_usd / max) * 100)) + '%' })),
           el('span', { class: 'num', text: fmtUsd(r.implied_value_usd) })
         )),
+        el('td', { class: 'num range', text: r.implied_range_usd ? fmtUsd(r.implied_range_usd.low) + ' – ' + fmtUsd(r.implied_range_usd.high) : 'n/a' }),
+        el('td', { class: 'num', text: r.readiness ? String(r.readiness.score) : 'n/a' }),
         el('td', null, el('span', { class: 'chip ' + (r.band === 'watchlist' ? 'watch' : 'early'), text: r.band === 'watchlist' ? 'watchlist' : 'early' }))
       ));
     });
     panel.appendChild(el('div', { class: 'table-wrap' },
       el('table', null,
-        el('caption', { text: 'Pre-token protocols by implied value. Rank is the model\'s order; select a row for the working and the farm plan.' }),
+        el('caption', { text: 'Pre-token protocols by implied value. The peer band is the value range at the peer set\'s 25th and 75th percentile multiples; Ready is the 0-100 launch-readiness score. Select a row for the working, the sensitivity and the farm plan.' }),
         el('thead', null, el('tr', null,
           sortHeader('rank', '#', true), sortHeader('name', 'Protocol'),
           sortHeader('tvl', 'TVL', true), sortHeader('growth', '7d', true), sortHeader('age', 'Age', true),
           sortHeader('mult', 'Peer x', true), sortHeader('implied', 'Implied value', true),
+          el('th', { scope: 'col', class: 'num', text: 'Peer band' }), sortHeader('ready', 'Ready', true),
           el('th', { scope: 'col', text: 'Band' })
         )),
         tbody
@@ -273,9 +280,23 @@
     DATA.multiples.forEach(function (r) {
       multBody.appendChild(el('tr', null,
         el('td', { text: r.category }),
+        el('td', { class: 'num', text: fmtMult(r.low) }),
         el('td', { class: 'num', text: fmtMult(r.multiple) }),
+        el('td', { class: 'num', text: fmtMult(r.high) }),
         el('td', { class: 'num', text: String(r.peers) }),
         el('td', { text: r.scope === 'global' ? 'fallback for thin categories' : 'category median' })
+      ));
+    });
+    var v = DATA.validation;
+    var landBody = el('tbody');
+    (DATA.categories || []).forEach(function (c) {
+      landBody.appendChild(el('tr', null,
+        el('td', { text: c.category }),
+        el('td', { class: 'num', text: String(c.ranked) }),
+        el('td', { class: 'num', text: String(c.live_peers) }),
+        el('td', { class: 'num', text: fmtUsd(c.pre_token_tvl_usd) }),
+        el('td', { class: 'num', text: fmtUsd(c.implied_total_usd) }),
+        el('td', { class: 'num', text: c.median_multiple === null ? 'fallback' : fmtMult(c.median_multiple) })
       ));
     });
     return el('div', { class: 'panel method' },
@@ -294,12 +315,28 @@
         el('b', { text: 'Reach factor. ' }),
         '1 + ' + m.reach_per_chain + ' for each chain past the first, up to ' + m.reach_max_extra_chains + ' extra chains: a launch lands better where the users already are.'),
       el('h2', { text: 'The multiples this board used' }),
+      el('p', null, 'Each row is priced at its category\'s median; the low and high columns are the 25th and 75th percentile multiples of the same peers, and they draw the scenario band on every board row: half of the live peers trade inside it.'),
       el('div', { class: 'table-wrap' },
         el('table', null,
           el('thead', null, el('tr', null,
-            el('th', { scope: 'col', text: 'Category' }), el('th', { scope: 'col', class: 'num', text: 'Median mcap / TVL' }),
+            el('th', { scope: 'col', text: 'Category' }), el('th', { scope: 'col', class: 'num', text: 'Low (p25)' }),
+            el('th', { scope: 'col', class: 'num', text: 'Median mcap / TVL' }), el('th', { scope: 'col', class: 'num', text: 'High (p75)' }),
             el('th', { scope: 'col', class: 'num', text: 'Live peers' }), el('th', { scope: 'col', text: 'Scope' }))),
           multBody)),
+      el('h2', { text: 'The model, scored against the tokens that exist' }),
+      el('p', null,
+        'Before trusting it on protocols with no token, the model was run on the ones that have one: each of the ' + v.priced + ' live protocols with a market cap and a TVL was priced by this same formula from its peers, itself left out, and compared with its real market cap. ' +
+        'The median model price lands at x' + Number(v.median_ratio).toFixed(2) + ' of the real market cap — close to unbiased, with no systematic over- or under-pricing. ' +
+        'Per name the spread is wide, as the peer multiples themselves are wide: the median error is x' + Number(v.median_abs_error_x).toFixed(1) + ', and ' + v.within_1_5x_pct + '% of live names price within 1.5x of their market cap, ' + v.within_2x_pct + '% within 2x, ' + v.within_3x_pct + '% within 3x. ' +
+        'That is why every row carries its peer band: the point value is the median peer\'s price, and the band is the honest range around it.'),
+      el('h2', { text: 'The landscape: where the pre-token weight sits' }),
+      el('div', { class: 'table-wrap' },
+        el('table', null,
+          el('thead', null, el('tr', null,
+            el('th', { scope: 'col', text: 'Category' }), el('th', { scope: 'col', class: 'num', text: 'Ranked' }),
+            el('th', { scope: 'col', class: 'num', text: 'Live peers' }), el('th', { scope: 'col', class: 'num', text: 'Pre-token TVL' }),
+            el('th', { scope: 'col', class: 'num', text: 'Implied total' }), el('th', { scope: 'col', class: 'num', text: 'Median x' }))),
+          landBody)),
       el('h2', { text: 'Who is on the board, and who is not' }),
       el('ul', null,
         el('li', null, el('b', { text: 'Ranked: ' }), 'every protocol whose record shows no token (no market cap, no CoinGecko id, no symbol) and which is not a product of an asset that already trades, plus every watchlist protocol whatever its shape. The watchlist\'s ' + DATA.stats.watchlist + ' are the floor; ' + DATA.stats.early + ' early rows it leaves out are the radar\'s own catch.'),
@@ -357,7 +394,27 @@
         el('span', { class: 'total', text: 'Implied value' }), el('b', { class: 'total', text: fmtUsd(row.implied_value_usd) })
       ),
       el('p', { class: 'note', text: 'Factors are shown rounded to three places; board.json carries the exact row. ' + row.name + ' records no token in the snapshot (no market cap, no CoinGecko id, no symbol)' + (row.listed_at ? ', and has been tracked since ' + row.listed_at + '.' : '.') + ' The implied value is what a token issued today would be worth if the market priced it like its tokenised peers: a model claim, not a forecast.' }),
+      el('h3', { text: 'Scenario band: the peers\' own dispersion' }),
+      el('div', { class: 'eq' },
+        el('span', { text: 'At the peer set\'s 25th percentile multiple' }), el('b', { text: fmtUsd(row.implied_range_usd.low) }),
+        el('span', { text: 'At the median (the board\'s value)' }), el('b', { text: fmtUsd(row.implied_value_usd) }),
+        el('span', { text: 'At the peer set\'s 75th percentile multiple' }), el('b', { text: fmtUsd(row.implied_range_usd.high) })
+      ),
+      el('p', { class: 'note', text: 'Half of the live peers in this set trade inside this band. The model\'s backtest (Method view) shows per-name prices land wide of the point value in just this way; the band, not the point, is the claim to plan around.' }),
+      el('h3', { text: 'Sensitivity: one input moved at a time' }),
+      el('div', { class: 'eq' },
+        el('span', { text: 'Peer multiple a quarter lower' }), el('b', { text: fmtUsd(row.sensitivity_usd.multiple_down) }),
+        el('span', { text: 'Peer multiple a quarter higher' }), el('b', { text: fmtUsd(row.sensitivity_usd.multiple_up) }),
+        el('span', { text: 'Seven-day growth ten points lower' }), el('b', { text: fmtUsd(row.sensitivity_usd.growth_down) }),
+        el('span', { text: 'Seven-day growth ten points higher' }), el('b', { text: fmtUsd(row.sensitivity_usd.growth_up) })
+      ),
+      el('h3', { text: 'Launch readiness: ' + row.readiness.score + ' / 100' }),
+      el('div', { class: 'signals' }, row.readiness.signals.length
+        ? row.readiness.signals.map(function (s) { return el('span', { class: 'sig', text: s }); })
+        : el('span', { class: 'sig', text: 'no signal stands out: a mid-record, mid-momentum row' })),
+      el('p', { class: 'note', text: 'Readiness weighs the length of the tokenless record, the week\'s momentum, chain reach, the depth of the peer set and TVL scale. It says how completely the record supports a launch, not what a launch would be worth.' }),
       el('h3', { text: 'Farm plan' }),
+      el('p', { class: 'note', text: 'Budget: $' + row.farm.capital_usd + ' of opening capital, a ' + row.farm.season_weeks + '-week season, about $' + row.farm.est_cost_usd + ' all-in including the second position, the second chain where the plan opens one, weekly gas and the claim.' }),
       el('ol', { class: 'steps' }, row.farm_steps.map(function (s) {
         var parts = splitStep(s);
         return el('li', null,

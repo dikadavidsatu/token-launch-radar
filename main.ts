@@ -2,9 +2,13 @@
 //
 // The program reads the sealed snapshot from /input/snapshot.json (or --input <file|directory>, or
 // $MAKEFUN_INPUT_DIR), values every rankable pre-token protocol with the peer-multiple model in
-// lib/model.ts, writes the ranked board to /output/board.json, writes the dashboard's data to
-// /output/data.js, copies this repository's dashboard/ and screenshots/ into /output, and writes
-// /output/dossier.json with buildDossier from vendor/makefun-board.ts, the kit's own library.
+// lib/model.ts — a point estimate per protocol, its scenario band from the peer multiples'
+// dispersion, its sensitivity to the two disputable inputs, a launch-readiness score with its
+// signals, and a costed farm plan — writes the ranked board to /output/board.json, writes the
+// dashboard's data to /output/data.js (including the model's leave-one-out backtest against the
+// snapshot's live tokens and the per-category landscape), copies this repository's dashboard/ and
+// screenshots/ into /output, and writes /output/dossier.json with buildDossier from
+// vendor/makefun-board.ts, the kit's own library.
 //
 // The run is a pure function of the snapshot's bytes: no clock, no randomness, no network, so two
 // runs write the same bytes. Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
@@ -90,7 +94,9 @@ for (const name of shots) {
 // The dossier is written last: the scorer rebuilds it from this /output and compares bytes.
 writeFileSync(join(out, 'dossier.json'), buildDossier(out, DOSSIER_CAPS));
 
+const val = radar.validation;
 process.stdout.write(
   `launch radar: ${snapshot.protocols.length} protocols, ${snapshot.watchlist.length} on the watchlist, ${board.length} rows ranked (${radar.stats.early} early, ${radar.stats.set_aside} set aside, ${radar.stats.live} already trading)\n` +
+    `launch radar: backtest (leave-one-out on ${val.priced} live tokens): median error x${val.median_abs_error_x}, ${val.within_2x_pct}% priced within 2x of market cap\n` +
     `launch radar: wrote ${join(out, 'board.json')}, ${join(out, 'data.js')}, ${join(out, 'dashboard')} (${pageFiles.length} files), ${join(out, 'screenshots')} (${shots.length} images) and ${join(out, 'dossier.json')}\n`,
 );
